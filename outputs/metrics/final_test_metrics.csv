@@ -1,0 +1,2 @@
+Model,Test_Accuracy,Test_Precision_Weighted,Test_Precision_Macro,Test_Recall_Weighted,Test_Recall_Macro,Test_F1_Weighted,Test_F1_Macro
+Random Forest (Final Tuned),0.9197,0.9256,0.9109,0.9197,0.894,0.9197,0.8975

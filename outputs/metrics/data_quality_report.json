@@ -1,0 +1,62 @@
+{
+  "total_rows": 35041,
+  "total_columns": 9,
+  "columns": [
+    "Date_Time",
+    "Usage_kWh",
+    "Lagging_Current_Reactive.Power_kVarh",
+    "Leading_Current_Reactive_Power_kVarh",
+    "CO2(tCO2)",
+    "Lagging_Current_Power_Factor",
+    "Leading_Current_Power_Factor",
+    "NSM",
+    "Load_Type"
+  ],
+  "dtypes": {
+    "Date_Time": "datetime64[ns]",
+    "Usage_kWh": "float64",
+    "Lagging_Current_Reactive.Power_kVarh": "float64",
+    "Leading_Current_Reactive_Power_kVarh": "float64",
+    "CO2(tCO2)": "float64",
+    "Lagging_Current_Power_Factor": "float64",
+    "Leading_Current_Power_Factor": "float64",
+    "NSM": "float64",
+    "Load_Type": "object"
+  },
+  "missing_counts": {
+    "Date_Time": 0,
+    "Usage_kWh": 1559,
+    "Lagging_Current_Reactive.Power_kVarh": 876,
+    "Leading_Current_Reactive_Power_kVarh": 1156,
+    "CO2(tCO2)": 455,
+    "Lagging_Current_Power_Factor": 350,
+    "Leading_Current_Power_Factor": 1471,
+    "NSM": 455,
+    "Load_Type": 0
+  },
+  "missing_percentages": {
+    "Date_Time": 0.0,
+    "Usage_kWh": 4.45,
+    "Lagging_Current_Reactive.Power_kVarh": 2.5,
+    "Leading_Current_Reactive_Power_kVarh": 3.3,
+    "CO2(tCO2)": 1.3,
+    "Lagging_Current_Power_Factor": 1.0,
+    "Leading_Current_Power_Factor": 4.2,
+    "NSM": 1.3,
+    "Load_Type": 0.0
+  },
+  "duplicate_rows": 0,
+  "duplicate_timestamps": 1,
+  "date_min": "2018-01-01 00:00:00",
+  "date_max": "2018-12-31 23:45:00",
+  "target_distribution": {
+    "Light_Load": 18073,
+    "Medium_Load": 9696,
+    "Maximum_Load": 7272
+  },
+  "target_distribution_pct": {
+    "Light_Load": 51.58,
+    "Medium_Load": 27.67,
+    "Maximum_Load": 20.75
+  }
+}

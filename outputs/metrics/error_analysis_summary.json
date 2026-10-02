@@ -1,0 +1,33 @@
+{
+  "total_test_samples": 2977,
+  "total_errors": 239,
+  "error_rate_pct": 8.03,
+  "accuracy_pct": 91.97,
+  "confusion_pairs": [
+    {
+      "Actual_Load_Type": "Maximum_Load",
+      "Predicted_Load_Type": "Medium_Load",
+      "Count": 82
+    },
+    {
+      "Actual_Load_Type": "Light_Load",
+      "Predicted_Load_Type": "Medium_Load",
+      "Count": 72
+    },
+    {
+      "Actual_Load_Type": "Maximum_Load",
+      "Predicted_Load_Type": "Light_Load",
+      "Count": 34
+    },
+    {
+      "Actual_Load_Type": "Medium_Load",
+      "Predicted_Load_Type": "Light_Load",
+      "Count": 33
+    },
+    {
+      "Actual_Load_Type": "Light_Load",
+      "Predicted_Load_Type": "Maximum_Load",
+      "Count": 18
+    }
+  ]
+}
