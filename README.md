@@ -1,196 +1,134 @@
-# Power System Load Type Prediction using Machine Learning
+# Power System Load Type Prediction
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
-[![Tests: Pytest](https://img.shields.io/badge/tests-pytest-green.svg)](https://docs.pytest.org/)
-
-A production-grade, reproducible Machine Learning project developed for power system operational load type categorization (`Light_Load`, `Medium_Load`, `Maximum_Load`) using time-series smart meter telemetry.
+This repository contains my machine learning project for the USEReady AI/ML internship assignment. The goal is to predict the operational load type of an industrial power system using 15-minute smart meter readings.
 
 ---
 
-## Table of Contents
+## Overview
 
-- [Problem Statement](#problem-statement)
-- [Objective](#objective)
-- [Dataset](#dataset)
-- [Features](#features)
-- [Target Variable](#target-variable)
-- [Methodology & Zero-Leakage Architecture](#methodology--zero-leakage-architecture)
-- [Data Preprocessing](#data-preprocessing)
-- [Exploratory Data Analysis](#exploratory-data-analysis)
-- [Feature Engineering](#feature-engineering)
-- [Time-Based Validation](#time-based-validation)
-- [Machine Learning Models](#machine-learning-models)
-- [Model Evaluation](#model-evaluation)
-- [Verified Results](#results)
-- [Feature Importance](#feature-importance)
-- [Error Analysis](#error-analysis)
-- [Project Structure](#project-structure)
-- [Installation](#installation)
-- [How to Run](#how-to-run)
-- [Example Prediction](#example-prediction)
-- [Future Improvements](#future-improvements)
-- [License](#license)
+Industrial facilities and electrical grids experience changing electricity demands throughout the day. Categorizing power usage into distinct load regimes helps grid operators manage peak demand, schedule equipment maintenance, and optimize electricity costs.
 
----
-
-## Problem Statement
-
-In electrical power distribution grids and industrial facilities, electrical power demand fluctuates continuously throughout the 24-hour diurnal cycle, across business vs. weekend operating schedules, and across seasonal periods. Accurate identification and forecasting of load levels—`Light_Load`, `Medium_Load`, and `Maximum_Load`—is vital for:
-
-1. **Grid Stability & Peak-Shaving:** Preventing transmission line congestion and transformer thermal overloading.
-2. **Economic Optimization:** Avoiding expensive maximum demand penalty tariffs through automated Demand-Side Management (DSM).
-3. **Operational Planning:** Scheduling reactive power compensation capacitors and optimal generator dispatch.
+This project implements an end-to-end classification pipeline that predicts the load category from power telemetry features and time-based indicators.
 
 ---
 
 ## Objective
 
-The objective of this project is to develop, validate, and evaluate an end-to-end Machine Learning classification model that accurately predicts the **`Load_Type`** of an industrial power system based on continuous operational telemetry and engineered temporal signals.
+Develop and evaluate a multi-class classification model to predict the target variable `Load_Type`, which consists of three classes:
 
-**Key Engineering Standards:**
-- Strict **time-series split**: The **entire final month (December 2018)** is reserved strictly as the unseen test set; all prior months (**January – November 2018**) form the training set.
-- **Zero data leakage**: Imputation, scaling, feature engineering, cross-validation, and hyperparameter tuning are fitted exclusively on training data.
-- **Time-aware cross-validation**: Evaluated across 5 sequential splits using `TimeSeriesSplit`.
-- **Modular codebase**: Clean separation of concerns into `src/` modules, unit tests, reproducible training pipelines, and interactive notebooks.
+1. `Light_Load`
+2. `Medium_Load`
+3. `Maximum_Load`
 
 ---
 
 ## Dataset
 
-The dataset (`load_data.csv`) contains continuous 15-minute operational recordings collected from an industrial smart meter over the entire 2018 calendar year.
+The provided dataset (`load_data.csv`) contains 35,041 observations recorded at 15-minute intervals across the entire calendar year 2018 (January 1, 2018 to December 31, 2018).
 
-- **Total Records:** 35,041 observations
-- **Temporal Span:** January 1, 2018 00:00:00 to December 31, 2018 23:45:00
-- **Sampling Frequency:** 15-minute intervals (96 intervals per day)
-- **Missing Values:** Handled via median imputation fitted strictly on training observations.
-
----
-
-## Features
-
-| Feature Name | Type | Unit | Description |
-| :--- | :--- | :--- | :--- |
-| `Usage_kWh` | Continuous | kWh | Active power consumption recorded per 15-minute interval |
-| `Lagging_Current_Reactive.Power_kVarh` | Continuous | kVarh | Inductive reactive power consumed |
-| `Leading_Current_Reactive_Power_kVarh` | Continuous | kVarh | Capacitive reactive power consumed |
-| `CO2(tCO2)` | Continuous | tCO₂ | Carbon dioxide emissions generated |
-| `Lagging_Current_Power_Factor` | Continuous | % | Power factor during lagging current conditions |
-| `Leading_Current_Power_Factor` | Continuous | % | Power factor during leading current conditions |
-| `NSM` | Continuous | s | Number of Seconds from Midnight (0 to 86,400) |
-| `hour`, `minute`, `day`, `month` | Discrete | Integer | Calendar date-time components |
-| `day_of_week`, `day_of_year`, `is_weekend` | Discrete | Integer | Day of week (0=Mon, 6=Sun) and weekend indicator |
-| `hour_sin`, `hour_cos` | Continuous | [-1, 1] | Cyclic trigonometric encoding of 24-hour cycle |
-| `day_of_week_sin`, `day_of_week_cos` | Continuous | [-1, 1] | Cyclic trigonometric encoding of 7-day weekly cycle |
-| `month_sin`, `month_cos` | Continuous | [-1, 1] | Cyclic trigonometric encoding of 12-month annual cycle |
-| `Total_Reactive_Power_kVarh` | Continuous | kVarh | Combined reactive loading ($Q_{lag} + Q_{lead}$) |
-| `Apparent_Power_Approx_kVA` | Continuous | kVA | Apparent energy loading ($\sqrt{P^2 + Q_{total}^2}$) |
-| `Reactive_to_Active_Ratio` | Continuous | Ratio | Ratio of total reactive energy to active energy |
+Key features in the dataset:
+- `Date_Time`: 15-minute timestamp
+- `Usage_kWh`: Active energy consumption per 15-minute window
+- `Lagging_Current_Reactive.Power_kVarh`: Reactive power under inductive loads
+- `Leading_Current_Reactive_Power_kVarh`: Reactive power under capacitive loads
+- `CO2(tCO2)`: Greenhouse gas emissions (metric tons)
+- `Lagging_Current_Power_Factor`: Power factor percentage during lagging current
+- `Leading_Current_Power_Factor`: Power factor percentage during leading current
+- `NSM`: Number of Seconds from Midnight (0 to 86,400)
+- `Load_Type` (Target): `Light_Load`, `Medium_Load`, `Maximum_Load`
 
 ---
 
-## Target Variable
+## Approach
 
-The target variable is **`Load_Type`**, a 3-class categorical label representing the power operational state:
+The implementation follows a structured machine learning workflow:
 
-| Class Label | Encoded ID | Full Dataset Count | Training Count (Jan–Nov) | Test Count (Dec) |
-| :--- | :---: | :---: | :---: | :---: |
-| **`Light_Load`** | `0` | 18,073 (51.58%) | 16,328 (50.92%) | 1,745 (58.62%) |
-| **`Medium_Load`** | `1` | 9,696 (27.67%) | 8,992 (28.04%) | 704 (23.65%) |
-| **`Maximum_Load`** | `2` | 7,272 (20.75%) | 6,744 (21.03%) | 528 (17.74%) |
-| **Total** | — | **35,041** | **32,064 (91.5%)** | **2,977 (8.5%)** |
+1. **Data Preprocessing:**
+   - Parsed timestamps into standard datetime format and sorted chronologically.
+   - Performed data quality analysis (checked missing values, data types, and duplicates).
+   - Applied median imputation within scikit-learn pipelines fitted strictly on training data to prevent data leakage.
 
----
+2. **Exploratory Data Analysis (EDA):**
+   - Analyzed target class distribution and class balance.
+   - Evaluated feature distributions and correlation heatmaps.
+   - Investigated daily, weekly, and hourly consumption patterns and power factor relationships.
 
-## Methodology & Zero-Leakage Architecture
+3. **Feature Engineering:**
+   - Extracted calendar features: `hour`, `minute`, `day`, `month`, `day_of_week`, `day_of_year`, and `is_weekend`.
+   - Created sine and cosine cyclic transformations for periodic time variables (`hour_sin`, `hour_cos`, `day_of_week_sin`, `day_of_week_cos`, `month_sin`, `month_cos`) to preserve continuity across 23:45 and 00:00.
+   - Derived electrical domain features: `Total_Reactive_Power_kVarh`, `Apparent_Power_Approx_kVA`, and `Reactive_to_Active_Ratio`.
 
-```mermaid
-flowchart TD
-    A["Raw Data (load_data.csv)"] --> B["Chronological Sorting & Date Parsing"]
-    B --> C["Deterministic Row-Wise Feature Engineering"]
-    C --> D["Time-Based Train/Test Split"]
-    D -->|"Jan - Nov 2018 (32,064 rows)"| E["Training Data"]
-    D -->|"Dec 2018 (2,977 rows)"| F["Unseen Test Data"]
-    
-    E --> G["TimeSeriesSplit CV (5 Folds)"]
-    G --> H["Model Comparison & Benchmarking"]
-    H --> I["Hyperparameter Tuning (GridSearchCV)"]
-    I --> J["Final Model Training (Full Jan-Nov Data)"]
-    
-    J --> K["Single Unseen Test Set Evaluation"]
-    F --> K
-    K --> L["Outputs: Metrics, Confusion Matrix, Feature Importance, Predictions"]
-```
+4. **Time-Based Train/Test Split:**
+   - Reserving the final month (December 2018) as the test set.
+   - Training on all prior months (January to November 2018).
 
----
+5. **Model Comparison & Validation:**
+   - Evaluated candidate algorithms using 5-fold `TimeSeriesSplit` cross-validation on the training set.
+   - Used weighted F1-score as the primary metric to account for class distribution.
 
-## Data Preprocessing
+6. **Hyperparameter Tuning:**
+   - Tuned the top candidate model using `GridSearchCV` with `TimeSeriesSplit` on training data only.
 
-1. **Chronological Sorting:** The dataset is indexed strictly in ascending chronological order (`2018-01-01 00:00:00` to `2018-12-31 23:45:00`).
-2. **Missing Value Handling:** Missing telemetry points are imputed via **median imputation** computed strictly from training fold observations.
-3. **Feature Scaling:** `StandardScaler` is applied within scikit-learn `Pipeline` objects for distance-sensitive algorithms (e.g., Logistic Regression). Tree-based ensembles operate directly on unscaled features to preserve natural feature thresholds.
+7. **Final Evaluation:**
+   - Evaluated the final trained model on the unseen December 2018 test set.
+   - Computed classification metrics, confusion matrix, feature importance, and error analysis.
 
 ---
 
-## Exploratory Data Analysis
+## Test Strategy
 
-All generated figures are stored in `outputs/figures/`:
-- **`eda_target_distribution.png`**: Class balance and support across load regimes.
-- **`eda_missing_values.png`**: Breakdown of missing value percentages per telemetry signal.
-- **`eda_numerical_distributions.png`**: Histograms and KDE distributions of active/reactive powers and power factors.
-- **`eda_correlation_heatmap.png`**: Pearson correlation matrix identifying colinearities.
-- **`eda_usage_over_time.png`**: Active power consumption time-series with 7-day and 30-day rolling averages.
-- **`eda_load_type_over_time.png`**: Weekly area proportions of load regimes across the entire year.
-- **`eda_usage_by_load_type.png`**: Boxplots and violin distributions showing power separation across load regimes.
-- **`eda_load_type_by_month.png`**: Monthly seasonal breakdown of load classes.
-- **`eda_load_type_by_hour.png`**: 24-hour diurnal cycle showing peak vs. base load periods.
-- **`eda_power_features_relationships.png`**: Inter-variable relationships between reactive power, power factors, CO₂, and load regimes.
+As required by the assignment, the final evaluation uses a strict chronological split:
+
+- **Training Set:** January 1, 2018 to November 30, 2018 (32,064 records, ~91.5% of data)
+- **Test Set:** December 1, 2018 to December 31, 2018 (2,977 records, ~8.5% of data)
+
+### Why the last month is used as the test set
+In power systems, machine learning models are deployed to forecast future load states based on historical operating data. Standard random shuffling (`train_test_split`) causes temporal data leakage by allowing the model to train on future timestamps and predict past ones. Using the complete final month as an unseen test set provides a realistic assessment of how the model generalizes to future operational conditions.
 
 ---
 
-## Time-Based Validation
+## Models
 
-Random $k$-fold cross-validation or random `train_test_split` leaks future cyclic patterns into past predictions. To simulate real-world forward deployment:
-- **Test Set:** December 2018 (final calendar month; 2,977 observations).
-- **Training Cross-Validation:** 5-fold `TimeSeriesSplit` on January–November 2018.
+Five classification algorithms were trained and compared:
 
----
-
-## Machine Learning Models
-
-Five distinct classification algorithms were implemented and benchmarked:
-1. **Logistic Regression:** Multinomial multi-class classifier with L-BFGS solver and standard feature scaling.
-2. **Decision Tree Classifier:** Baseline tree-based classifier.
-3. **Random Forest Classifier:** Bagged ensemble of decision trees.
-4. **Gradient Boosting Classifier:** Forward stage-wise additive gradient boosted trees.
-5. **XGBoost Classifier:** Extreme gradient boosted trees with histogram-based splitting.
+1. **Logistic Regression** (with standard scaling)
+2. **Decision Tree Classifier**
+3. **Random Forest Classifier**
+4. **Gradient Boosting Classifier**
+5. **XGBoost Classifier**
 
 ---
 
-## Model Evaluation
+## Evaluation Metrics
 
-### Time-Series Cross-Validation Comparison (Training Data: Jan–Nov 2018)
+To evaluate multi-class performance with class imbalance, the following metrics were used:
 
-| Model | Accuracy (Mean) | Accuracy (Std) | Precision (Weighted) | Recall (Weighted) | F1-Score (Weighted Mean) | F1-Score (Macro Mean) |
-| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
-| **Random Forest** *(Top Candidate)* | **0.8622** | ±0.1126 | **0.8546** | **0.8622** | **0.8562** | **0.8336** |
-| **XGBoost** | 0.8598 | ±0.1050 | 0.8546 | 0.8598 | 0.8546 | 0.8322 |
-| **Gradient Boosting** | 0.8568 | ±0.1048 | 0.8511 | 0.8568 | 0.8514 | 0.8290 |
-| **Decision Tree** | 0.8358 | ±0.0978 | 0.8334 | 0.8358 | 0.8317 | 0.8060 |
-| **Logistic Regression** | 0.7222 | ±0.1021 | 0.7193 | 0.7222 | 0.6895 | 0.6524 |
+- **Accuracy:** Overall proportion of correct predictions
+- **Precision (Weighted & Macro):** Accuracy of positive predictions per class
+- **Recall (Weighted & Macro):** Proportion of actual class instances correctly identified
+- **F1-Score (Weighted & Macro):** Harmonic mean of precision and recall
 
 ---
 
 ## Results
 
-### Final Model Performance on Unseen Test Set (December 2018)
+### Cross-Validation Comparison (5-Fold TimeSeriesSplit on Training Set)
 
-The top-performing model (**Random Forest**, tuned with `n_estimators=100`, `max_depth=12`, `min_samples_split=2`, `min_samples_leaf=2`) was trained on all 32,064 records (January–November) and evaluated **once** on the unseen December test set:
+| Model | CV Accuracy (Mean ± Std) | CV F1-Score (Weighted) | CV F1-Score (Macro) |
+| :--- | :---: | :---: | :---: |
+| **Random Forest** | **0.8622 ± 0.1126** | **0.8562 ± 0.1239** | **0.8336** |
+| **XGBoost** | 0.8598 ± 0.1050 | 0.8546 ± 0.1153 | 0.8322 |
+| **Gradient Boosting** | 0.8568 ± 0.1048 | 0.8514 ± 0.1154 | 0.8290 |
+| **Decision Tree** | 0.8358 ± 0.0978 | 0.8317 ± 0.1065 | 0.8060 |
+| **Logistic Regression** | 0.7222 ± 0.1021 | 0.6895 ± 0.1413 | 0.6524 |
 
-| Evaluation Metric | Test Score | Percentage |
+### Final Test Evaluation (Unseen Month: December 2018)
+
+Random Forest was selected as the final model and tuned via `GridSearchCV` (`max_depth=12`, `min_samples_leaf=2`, `min_samples_split=2`, `n_estimators=100`). After fitting on the full training period (January–November), it was evaluated on the December test set:
+
+| Metric | Score | Percentage |
 | :--- | :---: | :---: |
-| **Test Accuracy** | **0.9197** | **91.97%** |
+| **Accuracy** | **0.9197** | **91.97%** |
 | **Weighted Precision** | **0.9256** | **92.56%** |
 | **Weighted Recall** | **0.9197** | **91.97%** |
 | **Weighted F1-Score** | **0.9197** | **91.97%** |
@@ -198,46 +136,13 @@ The top-performing model (**Random Forest**, tuned with `n_estimators=100`, `max
 | **Macro Recall** | **0.8940** | **89.40%** |
 | **Macro F1-Score** | **0.8975** | **89.75%** |
 
-### Per-Class Test Set Classification Report
+### Per-Class Performance on Test Set
 
-| Class Name | Precision | Recall | F1-Score | Support (Records) |
+| Class | Precision | Recall | F1-Score | Support |
 | :--- | :---: | :---: | :---: | :---: |
-| **`Light_Load`** | 0.9611 | 0.9484 | **0.9547** | 1,745 |
-| **`Medium_Load`** | 0.8133 | 0.9531 | **0.8777** | 704 |
-| **`Maximum_Load`** | 0.9581 | 0.7803 | **0.8601** | 528 |
-| **Overall Accuracy** | — | — | **0.9197** | **2,977** |
-
----
-
-## Feature Importance
-
-Top 10 most influential features determined by Gini impurity reduction:
-
-| Rank | Feature Name | Relative Importance Score | Domain Category |
-| :---: | :--- | :---: | :--- |
-| 1 | `hour` | **0.1473** | Diurnal Calendar Time |
-| 2 | `NSM` (Seconds from Midnight) | **0.1388** | Exact Daily Seconds |
-| 3 | `hour_sin` | **0.1266** | Cyclic Trigonometric Hour |
-| 4 | `hour_cos` | **0.0884** | Cyclic Trigonometric Hour |
-| 5 | `Usage_kWh` | **0.0728** | Active Power Telemetry |
-| 6 | `Apparent_Power_Approx_kVA` | **0.0557** | Total Apparent Energy Loading |
-| 7 | `CO2(tCO2)` | **0.0534** | Carbon Telemetry |
-| 8 | `Lagging_Current_Power_Factor` | **0.0463** | Inductive Power Factor Efficiency |
-| 9 | `day_of_year` | **0.0406** | Seasonal Day of Year |
-| 10 | `Reactive_to_Active_Ratio` | **0.0338** | Power Factor Dynamics |
-
-> **Note on Feature Importance vs. Causality:** Feature importances indicate statistical contribution and variance reduction across tree partitions in the ensemble; they represent predictive association rather than direct causal mechanisms.
-
----
-
-## Error Analysis
-
-- **Total Test Samples:** 2,977
-- **Total Misclassifications:** 239 (Error Rate: **8.03%**)
-- **Key Error Patterns:**
-  - `Maximum_Load` mispredicted as `Medium_Load`: 82 cases (predominantly during ramp-down shift transitions at 17:00–18:00).
-  - `Light_Load` mispredicted as `Medium_Load`: 72 cases (early morning startup periods at 06:00–07:00).
-  - High confidence maintained on core operating hours; misclassifications cluster at tariff switching boundaries.
+| `Light_Load` | 0.9611 | 0.9484 | 0.9547 | 1,745 |
+| `Medium_Load` | 0.8133 | 0.9531 | 0.8777 | 704 |
+| `Maximum_Load` | 0.9581 | 0.7803 | 0.8601 | 528 |
 
 ---
 
@@ -247,94 +152,83 @@ Top 10 most influential features determined by Gini impurity reduction:
 power-load-type-prediction/
 │
 ├── data/
-│   ├── raw/
-│   │   └── load_data.csv              # Raw time-series dataset
-│   └── processed/                     # Processed splits / intermediate tables
+│   └── raw/
+│       └── load_data.csv                    # Dataset (35,041 records)
 │
 ├── notebooks/
-│   └── Power_Load_Type_Prediction.ipynb # Fully documented Jupyter Notebook
+│   └── Power_Load_Type_Prediction.ipynb     # Main Jupyter notebook with executed outputs
 │
 ├── src/
-│   ├── __init__.py                    # Package initializer
-│   ├── data_loader.py                 # Data ingestion, validation, chronological sort
-│   ├── preprocessing.py               # Preprocessing pipelines, split logic, target encoder
-│   ├── feature_engineering.py         # Cyclic, temporal, and power-domain features
-│   ├── eda.py                         # Reusable publication-quality visualization functions
-│   ├── models.py                      # Model catalog, TimeSeriesSplit CV, tuning
-│   ├── evaluation.py                  # Test metrics, confusion matrix, error analysis
-│   ├── train.py                       # End-to-end training and artifact generation script
-│   └── predict.py                     # Production inference function
+│   ├── __init__.py                          # Package initializer
+│   ├── data_loader.py                       # Data loading and validation
+│   ├── preprocessing.py                     # Split logic and preprocessing pipelines
+│   ├── feature_engineering.py               # Time, cyclic, and power features
+│   ├── eda.py                               # Reusable visualization functions
+│   ├── models.py                            # Model catalog, cross-validation, tuning
+│   ├── evaluation.py                        # Metric computation and evaluation plots
+│   ├── train.py                             # End-to-end training pipeline
+│   └── predict.py                           # Inference function
 │
 ├── models/
-│   ├── final_load_type_model.joblib   # Persisted tuned final pipeline
-│   └── preprocessor.joblib            # Persisted preprocessor artifact
+│   ├── final_load_type_model.joblib         # Saved final trained model pipeline
+│   └── preprocessor.joblib                  # Saved preprocessor
 │
 ├── outputs/
-│   ├── figures/                       # Generated EDA and evaluation plots
-│   ├── metrics/                       # CSV/JSON performance tables and summaries
+│   ├── figures/                             # Saved EDA and evaluation charts
+│   ├── metrics/                             # Saved comparison tables and reports
 │   └── predictions/
-│       └── test_predictions.csv       # Unseen test set predictions with error flags
+│       └── test_predictions.csv             # December test set predictions
 │
 ├── tests/
 │   ├── __init__.py
-│   └── test_pipeline.py               # Automated pytest suite (7 unit & integration tests)
+│   └── test_pipeline.py                     # Pytest suite (7 tests)
 │
-├── requirements.txt                   # Dependency manifest
-├── README.md                          # Comprehensive technical documentation
-├── .gitignore                         # Standard git ignore rules
-└── LICENSE                            # MIT License
+├── README.md                                # Project documentation
+├── requirements.txt                         # Required dependencies
+├── .gitignore                               # Git ignore rules
+└── LICENSE                                  # MIT License
 ```
 
 ---
 
 ## Installation
 
+1. Clone the repository:
 ```bash
-# 1. Clone repository
 git clone https://github.com/<your-username>/power-load-type-prediction.git
 cd power-load-type-prediction
+```
 
-# 2. Create virtual environment
+2. Create and activate a virtual environment:
+```bash
+# Windows
 python -m venv venv
-
-# 3. Activate virtual environment
-# On Windows:
 venv\Scripts\activate
-# On Linux/macOS:
-source venv/bin/activate
 
-# 4. Install required dependencies
+# Linux / macOS
+python -m venv venv
+source venv/bin/activate
+```
+
+3. Install dependencies:
+```bash
 pip install -r requirements.txt
 ```
 
 ---
 
-## How to Run
+## Running the Project
 
-### 1. Execute End-to-End Training Pipeline
+To run the complete training pipeline and generate all outputs:
 ```bash
 python src/train.py
 ```
 
-### 2. Run Automated Pytest Suite
-```bash
-pytest tests/test_pipeline.py -v
-```
-
-### 3. Launch Jupyter Notebook
-```bash
-jupyter notebook notebooks/Power_Load_Type_Prediction.ipynb
-```
-
----
-
-## Example Prediction
-
+To run prediction inference on new sample data:
 ```python
 from src.predict import predict_load_type
 
-# Single sample input (raw operational telemetry)
-sample_telemetry = {
+sample = {
     "Date_Time": "15-12-2018 14:30",
     "Usage_kWh": 68.4,
     "Lagging_Current_Reactive.Power_kVarh": 28.5,
@@ -345,24 +239,43 @@ sample_telemetry = {
     "NSM": 52200,
 }
 
-# Run inference
-prediction, probabilities = predict_load_type(sample_telemetry, return_proba=True)
-
+prediction = predict_load_type(sample)
 print("Predicted Load Type:", prediction[0])
-# Output: 'Maximum_Load'
 ```
+
+---
+
+## Running Tests
+
+Run the test suite using pytest:
+```bash
+pytest tests/test_pipeline.py -v
+```
+
+All 7 unit and integration tests cover data loading, quality reporting, feature engineering, time-based splitting, preprocessor fitting, target encoding, and inference.
+
+---
+
+## Notebook
+
+The primary assessment notebook is located at:
+```
+notebooks/Power_Load_Type_Prediction.ipynb
+```
+
+The notebook is fully executed and organized into 27 structured sections with Markdown commentary, code cells, data tables, and inline plots.
 
 ---
 
 ## Future Improvements
 
-1. **Sequential Deep Learning:** Evaluate Temporal Convolutional Networks (TCN) or PatchTST Transformers to capture multi-scale autoregressive lag patterns.
-2. **Lagged Window Features:** Add rolling active power statistics ($t-1$, $t-4$, $t-96$ for 24-hour lag) for real-time temporal momentum.
-3. **Microservice Deployment:** Containerize the inference pipeline into a high-throughput REST API using FastAPI and Docker.
-4. **Continuous Drift Monitoring:** Integrate Evidently AI / River for real-time concept drift monitoring and automated pipeline retraining.
+1. **Lagged Power Features:** Add rolling and lagged features ($t-1$, $t-4$, $t-96$) to capture short-term memory in load transitions.
+2. **Deep Learning:** Test sequential models such as LSTM or Temporal Convolutional Networks (TCN).
+3. **API Deployment:** Wrap the inference function in a lightweight REST API using FastAPI.
+4. **Drift Monitoring:** Implement data drift detection to monitor power consumption shifts over time.
 
 ---
 
 ## License
 
-This project is licensed under the [MIT License](LICENSE).
+This project is released under the [MIT License](LICENSE).
